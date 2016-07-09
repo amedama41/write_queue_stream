@@ -27,3 +27,7 @@
 *.exe
 *.out
 *.app
+
+# Test files
+test/all_test
+test/.*.depends
