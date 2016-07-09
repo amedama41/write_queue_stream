@@ -450,19 +450,19 @@ private:
 
   template <class ReadHandler>
   using read_result_init = async_result_init<
-      canard::remove_cv_and_reference_t<ReadHandler>
+      canard::remove_cvref_t<ReadHandler>
     , void(boost::system::error_code, std::size_t)
   >;
 
   template <class WriteHandler>
   using write_result_init = async_result_init<
-      canard::remove_cv_and_reference_t<WriteHandler>
+      canard::remove_cvref_t<WriteHandler>
     , void(boost::system::error_code, std::size_t)
   >;
 
   template <class CompletionHandler>
   using completion_result_init = async_result_init<
-      canard::remove_cv_and_reference_t<CompletionHandler>
+      canard::remove_cvref_t<CompletionHandler>
     , void()
   >;
 
@@ -553,7 +553,7 @@ public:
 
     using operation_type = detail::waiting_op<
         handler_type
-      , canard::remove_cv_and_reference_t<ConstBufferSequence>
+      , canard::remove_cvref_t<ConstBufferSequence>
     >;
 
     detail::op_holder<handler_type, operation_type> holder{ init.handler() };

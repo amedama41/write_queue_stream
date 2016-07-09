@@ -133,28 +133,28 @@ namespace detail {
     template <class Handler, class Arg1>
     auto bind(Handler&& handler, Arg1&& arg1)
         -> bind_handler_detail::binder1<
-              typename canard::remove_cv_and_reference<Handler>::type
-            , typename canard::remove_cv_and_reference<Arg1>::type
+              canard::remove_cvref_t<Handler>
+            , canard::remove_cvref_t<Arg1>
            >
     {
         return bind_handler_detail::binder1<
-              typename canard::remove_cv_and_reference<Handler>::type
-            , typename canard::remove_cv_and_reference<Arg1>::type
+              canard::remove_cvref_t<Handler>
+            , canard::remove_cvref_t<Arg1>
         >{std::forward<Handler>(handler), std::forward<Arg1>(arg1)};
     }
 
     template <class Handler, class Arg1, class Arg2>
     auto bind(Handler&& handler, Arg1&& arg1, Arg2&& arg2)
         -> bind_handler_detail::binder2<
-              typename canard::remove_cv_and_reference<Handler>::type
-            , typename canard::remove_cv_and_reference<Arg1>::type
-            , typename canard::remove_cv_and_reference<Arg2>::type
+              canard::remove_cvref_t<Handler>
+            , canard::remove_cvref_t<Arg1>
+            , canard::remove_cvref_t<Arg2>
            >
     {
         return bind_handler_detail::binder2<
-              typename canard::remove_cv_and_reference<Handler>::type
-            , typename canard::remove_cv_and_reference<Arg1>::type
-            , typename canard::remove_cv_and_reference<Arg2>::type
+              canard::remove_cvref_t<Handler>
+            , canard::remove_cvref_t<Arg1>
+            , canard::remove_cvref_t<Arg2>
         >{std::forward<Handler>(handler), std::forward<Arg1>(arg1), std::forward<Arg2>(arg2)};
     }
 
