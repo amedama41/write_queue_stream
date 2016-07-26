@@ -20,11 +20,6 @@ namespace canard_test {
     public:
         using lowest_layer_type = stub_stream;
 
-        template <class T>
-        using remove_cv_ref_t = typename std::remove_cv<
-            typename std::remove_reference<T>::type
-        >::type;
-
         explicit stub_stream(
                   boost::asio::io_service& io_service
                 , std::size_t const max_writable_size_per_write
@@ -52,7 +47,7 @@ namespace canard_test {
         template <
               class ConstBufferSequence, class CompletionToken
             , class WriteHandler = typename boost::asio::handler_type<
-                  remove_cv_ref_t<CompletionToken>
+                  typename std::decay<CompletionToken>::type
                 , void(boost::system::error_code, std::size_t)
               >::type
         >

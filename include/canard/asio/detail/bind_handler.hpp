@@ -3,10 +3,10 @@
 
 #include <utility>
 #include <memory>
+#include <type_traits>
 #include <boost/asio/handler_alloc_hook.hpp>
 #include <boost/asio/handler_continuation_hook.hpp>
 #include <boost/asio/handler_invoke_hook.hpp>
-#include <canard/type_traits.hpp>
 
 namespace canard {
 namespace detail {
@@ -133,28 +133,28 @@ namespace detail {
     template <class Handler, class Arg1>
     auto bind(Handler&& handler, Arg1&& arg1)
         -> bind_handler_detail::binder1<
-              canard::remove_cvref_t<Handler>
-            , canard::remove_cvref_t<Arg1>
+              typename std::decay<Handler>::type
+            , typename std::decay<Arg1>::type
            >
     {
         return bind_handler_detail::binder1<
-              canard::remove_cvref_t<Handler>
-            , canard::remove_cvref_t<Arg1>
+              typename std::decay<Handler>::type
+            , typename std::decay<Arg1>::type
         >{std::forward<Handler>(handler), std::forward<Arg1>(arg1)};
     }
 
     template <class Handler, class Arg1, class Arg2>
     auto bind(Handler&& handler, Arg1&& arg1, Arg2&& arg2)
         -> bind_handler_detail::binder2<
-              canard::remove_cvref_t<Handler>
-            , canard::remove_cvref_t<Arg1>
-            , canard::remove_cvref_t<Arg2>
+              typename std::decay<Handler>::type
+            , typename std::decay<Arg1>::type
+            , typename std::decay<Arg2>::type
            >
     {
         return bind_handler_detail::binder2<
-              canard::remove_cvref_t<Handler>
-            , canard::remove_cvref_t<Arg1>
-            , canard::remove_cvref_t<Arg2>
+              typename std::decay<Handler>::type
+            , typename std::decay<Arg1>::type
+            , typename std::decay<Arg2>::type
         >{std::forward<Handler>(handler), std::forward<Arg1>(arg1), std::forward<Arg2>(arg2)};
     }
 

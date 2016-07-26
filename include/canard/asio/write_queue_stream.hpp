@@ -27,7 +27,6 @@
 #include <canard/asio/detail/consuming_buffers.hpp>
 #include <canard/asio/detail/operation_holder.hpp>
 #include <canard/exception.hpp>
-#include <canard/type_traits.hpp>
 
 namespace canard {
 namespace detail {
@@ -450,19 +449,19 @@ private:
 
   template <class ReadHandler>
   using read_result_init = async_result_init<
-      canard::remove_cvref_t<ReadHandler>
+      typename std::decay<ReadHandler>::type
     , void(boost::system::error_code, std::size_t)
   >;
 
   template <class WriteHandler>
   using write_result_init = async_result_init<
-      canard::remove_cvref_t<WriteHandler>
+      typename std::decay<WriteHandler>::type
     , void(boost::system::error_code, std::size_t)
   >;
 
   template <class CompletionHandler>
   using completion_result_init = async_result_init<
-      canard::remove_cvref_t<CompletionHandler>
+      typename std::decay<CompletionHandler>::type
     , void()
   >;
 
@@ -553,7 +552,7 @@ public:
 
     using operation_type = detail::waiting_op<
         handler_type
-      , canard::remove_cvref_t<ConstBufferSequence>
+      , typename std::decay<ConstBufferSequence>::type
     >;
 
     detail::op_holder<handler_type, operation_type> holder{ init.handler() };
