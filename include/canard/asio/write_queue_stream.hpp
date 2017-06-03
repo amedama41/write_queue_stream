@@ -14,15 +14,12 @@
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/detail/buffer_sequence_adapter.hpp>
-#include <boost/asio/detail/fenced_block.hpp>
-#include <boost/asio/detail/op_queue.hpp>
-#include <boost/asio/detail/operation.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/system/system_error.hpp>
 #include <canard/asio/async_result_init.hpp>
+#include <canard/asio/detail/base_implementation.hpp>
 #include <canard/asio/detail/bind_handler.hpp>
 #include <canard/asio/detail/consuming_buffers.hpp>
 #include <canard/asio/detail/operation_holder.hpp>
@@ -31,22 +28,16 @@
 namespace canard {
 namespace detail {
 
-  struct asio_limiting_params
-    : private boost::asio::detail::buffer_sequence_adapter_base
-  {
-    using buffer_sequence_adapter_base::max_buffers;
-  };
-
-  using buffers_type = std::array<
-    boost::asio::const_buffer, asio_limiting_params::max_buffers
-  >;
+  using buffers_type
+    = std::array<boost::asio::const_buffer, detail::max_buffers>;
   using buffers_iterator = buffers_type::iterator;
 
   class write_op_base
-    : public boost::asio::detail::operation
+    : public detail::post_operation
   {
   protected:
-    using complete_func_type = boost::asio::detail::operation::func_type;
+    using complete_func_type = detail::operation::func_type;
+    using post_func_type = detail::post_operation::post_func_type;
     using consume_func_type
       = auto(*)(write_op_base*, std::size_t&) -> boost::asio::const_buffer;
     using buffers_func_type
@@ -55,9 +46,10 @@ namespace detail {
 
     write_op_base(
           complete_func_type const complete_func
+        , post_func_type const post_func
         , consume_func_type const consume_func
         , buffers_func_type const buffers_func)
-      : boost::asio::detail::operation{complete_func}
+      : detail::post_operation{complete_func, post_func}
       , consume_func_(consume_func)
       , buffers_func_(buffers_func)
       , ec_{}
@@ -119,14 +111,14 @@ namespace detail {
   {
   public:
     waiting_op(WriteHandler& handler, ConstBufferSequence&& buffers)
-      : write_op_base{&do_complete, &do_consume, &do_buffers}
+      : write_op_base{&do_complete, &do_post, &do_consume, &do_buffers}
       , handler_(handler)
       , buffers_(std::move(buffers))
     {
     }
 
     waiting_op(WriteHandler& handler, ConstBufferSequence const& buffers)
-      : write_op_base{&do_complete, &do_consume, &do_buffers}
+      : write_op_base{&do_complete, &do_post, &do_consume, &do_buffers}
       , handler_(handler)
       , buffers_(buffers)
     {
@@ -134,8 +126,8 @@ namespace detail {
 
   private:
     static void do_complete(
-          boost::asio::detail::io_service_impl* owner
-        , boost::asio::detail::operation* base
+          detail::io_service_impl* owner
+        , detail::operation* base
         , boost::system::error_code const& ec
         , std::size_t bytes_transferred)
     {
@@ -150,12 +142,27 @@ namespace detail {
       holder.reset();
 
       if (owner) {
-        boost::asio::detail::fenced_block b{
-          boost::asio::detail::fenced_block::half
-        };
+        detail::fenced_block b{detail::fenced_block::half};
+
         using boost::asio::asio_handler_invoke;
         asio_handler_invoke(function, std::addressof(function.handler()));
       }
+    }
+
+    static void do_post(
+        boost::asio::io_service& io_service, detail::post_operation* base)
+    {
+      auto const op = static_cast<waiting_op*>(base);
+
+      detail::op_holder<WriteHandler, waiting_op> holder{ op->handler_, op };
+
+      auto function
+        = detail::bind(op->handler_, op->error_code(), op->bytes_transferred());
+
+      holder.handler(function.handler());
+      holder.reset();
+
+      io_service.post(std::move(function));
     }
 
     static auto do_consume(write_op_base* base, std::size_t& bytes_transferred)
@@ -198,13 +205,11 @@ namespace detail {
       auto bytes_transferred = std::size_t{};
       head_buffer() = waiting_queue.front()->consume(bytes_transferred);
 
-      auto& io_service_impl = boost::asio::use_service<
-        boost::asio::detail::io_service_impl
-      >(stream.get_io_service());
+      auto& io_srv_impl = detail::get_io_service_impl(stream.get_io_service());
 
       stream.async_write_some(
             gather_buffers()
-          , write_queue_handler<Stream, Context>{ io_service_impl, std::move(ptr) });
+          , write_queue_handler<Stream, Context>{io_srv_impl, std::move(ptr)});
     }
 
     void continue_write(write_queue_handler<Stream, Context> const& handler)
@@ -223,7 +228,7 @@ namespace detail {
     {
       auto it = std::next(buffers_.begin());
       auto const it_end = buffers_.end();
-      using boost::asio::detail::op_queue_access;
+      using detail::op_queue_access;
       for (auto op = waiting_queue.front(); op; op = op_queue_access::next(op)) {
         it = op->buffers(it, it_end);
         if (it == it_end) {
@@ -234,15 +239,15 @@ namespace detail {
     }
 
     Stream stream;
-    boost::asio::detail::op_queue<detail::write_op_base> waiting_queue;
+    detail::op_queue<detail::write_op_base> waiting_queue;
     buffers_type buffers_;
   };
 
   void set_error_code(
         boost::system::error_code const& ec
-      , boost::asio::detail::op_queue<detail::write_op_base>& queue)
+      , detail::op_queue<detail::write_op_base>& queue)
   {
-    using boost::asio::detail::op_queue_access;
+    using detail::op_queue_access;
     for (auto op = queue.front(); op; op = op_queue_access::next(op)) {
       op->error_code(ec);
     }
@@ -253,8 +258,7 @@ namespace detail {
   {
   private:
     using impl_type = write_queue_stream_impl<Stream, Context>;
-    using operation_queue
-      = boost::asio::detail::op_queue<boost::asio::detail::operation>;
+    using operation_queue = op_queue<detail::operation>;
 
     struct on_do_complete_exit
     {
@@ -281,7 +285,7 @@ namespace detail {
 
         while (auto const op = ready_queue.front()) {
           ready_queue.pop();
-          this_->io_service_impl_.post_immediate_completion(op, true);
+          detail::post_to(this_->io_service_impl_, op);
         }
       }
 
@@ -298,7 +302,7 @@ namespace detail {
 
   public:
     write_queue_handler(
-          boost::asio::detail::io_service_impl& io_service_impl
+          detail::io_service_impl& io_service_impl
         , std::shared_ptr<impl_type>&& impl)
         : io_service_impl_(io_service_impl)
         , impl_(std::move(impl))
@@ -385,7 +389,7 @@ namespace detail {
     }
 
   private:
-    boost::asio::detail::io_service_impl& io_service_impl_;
+    detail::io_service_impl& io_service_impl_;
     std::shared_ptr<impl_type> impl_;
   };
 
@@ -473,7 +477,7 @@ private:
         queue->pop();
       }
     }
-    boost::asio::detail::op_queue<detail::write_op_base>* queue;
+    detail::op_queue<detail::write_op_base>* queue;
     bool commit;
   };
 
