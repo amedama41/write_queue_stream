@@ -26,6 +26,7 @@ struct buffer_fixture : Context
 {
   buffer_fixture() : buffers(num_buffers)
   {
+    result.reserve(num_buffers);
     constexpr auto buffer_size = std::size_t{512};
     for (auto i = 0; i < num_buffers; ++i) {
       buffers[i] = std::string(buffer_size, char('0' + i));
@@ -147,7 +148,6 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
 
   BOOST_AUTO_TEST_SUITE(default_context)
 
-
     BOOST_FIXTURE_TEST_CASE(construct_from_stream, default_ctx_fixture<5000>)
     {
       auto ec = make_error_code(sys::errc::bad_message);
@@ -161,7 +161,6 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data().size() == 0);
     }
 
-
     BOOST_FIXTURE_TEST_CASE(construct_from_arguments, default_ctx_fixture<3000>)
     {
       auto ec = make_error_code(sys::errc::no_stream_resources);
@@ -174,8 +173,8 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data().size() == 0);
     }
 
-
-    BOOST_FIXTURE_TEST_CASE(continuous_write, buffer_fixture<default_ctx_fixture<>>)
+    BOOST_FIXTURE_TEST_CASE(
+        continuous_write, buffer_fixture<default_ctx_fixture<>>)
     {
       stream_type stream{io_service};
 
@@ -192,8 +191,8 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data() == joined_buffers());
     }
 
-
-    BOOST_FIXTURE_TEST_CASE(continuous_short_write, buffer_fixture<default_ctx_fixture<128>>)
+    BOOST_FIXTURE_TEST_CASE(
+        continuous_short_write, buffer_fixture<default_ctx_fixture<128>>)
     {
       stream_type stream{io_service, max_size};
 
@@ -210,12 +209,13 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data() == joined_buffers());
     }
 
-
-    BOOST_FIXTURE_TEST_CASE(chained_write, buffer_fixture<default_ctx_fixture<128>>)
+    BOOST_FIXTURE_TEST_CASE(
+        chained_write, buffer_fixture<default_ctx_fixture<128>>)
     {
       stream_type stream{io_service, max_size};
 
-      stream.async_write_some(asio::buffer(buffers[0]), chained_callback(stream));
+      stream.async_write_some(
+          asio::buffer(buffers[0]), chained_callback(stream));
       io_service.run();
 
       BOOST_TEST(result.size() == num_buffers);
@@ -225,7 +225,6 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       }
       BOOST_TEST(stream.next_layer().written_data() == joined_buffers());
     }
-
 
   BOOST_AUTO_TEST_SUITE_END() // default_context
 
@@ -270,7 +269,6 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
 
   BOOST_AUTO_TEST_SUITE(strand_context)
 
-
     BOOST_FIXTURE_TEST_CASE(construct_from_stream, strand_ctx_fixture<5000>)
     {
       auto ec = make_error_code(sys::errc::bad_message);
@@ -284,7 +282,6 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data().size() == 0);
     }
 
-
     BOOST_FIXTURE_TEST_CASE(construct_from_arguments, strand_ctx_fixture<3000>)
     {
       auto ec = make_error_code(sys::errc::no_stream_resources);
@@ -297,8 +294,8 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data().size() == 0);
     }
 
-
-    BOOST_FIXTURE_TEST_CASE(continuous_write, buffer_fixture<strand_ctx_fixture<>>)
+    BOOST_FIXTURE_TEST_CASE(
+        continuous_write, buffer_fixture<strand_ctx_fixture<>>)
     {
       stream_type stream{strand, io_service};
 
@@ -315,8 +312,8 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data() == joined_buffers());
     }
 
-
-    BOOST_FIXTURE_TEST_CASE(continuous_short_write, buffer_fixture<strand_ctx_fixture<128>>)
+    BOOST_FIXTURE_TEST_CASE(
+        continuous_short_write, buffer_fixture<strand_ctx_fixture<128>>)
     {
       stream_type stream{strand, io_service, max_size};
 
@@ -333,12 +330,13 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data() == joined_buffers());
     }
 
-
-    BOOST_FIXTURE_TEST_CASE(chained_write, buffer_fixture<strand_ctx_fixture<128>>)
+    BOOST_FIXTURE_TEST_CASE(
+        chained_write, buffer_fixture<strand_ctx_fixture<128>>)
     {
       stream_type stream{strand, io_service, max_size};
 
-      stream.async_write_some(asio::buffer(buffers[0]), chained_callback(stream));
+      stream.async_write_some(
+          asio::buffer(buffers[0]), chained_callback(stream));
       io_service.run();
 
       BOOST_TEST(result.size() == num_buffers);
@@ -349,12 +347,10 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data() == joined_buffers());
     }
 
-
   BOOST_AUTO_TEST_SUITE_END() // strand_context
 
 
   BOOST_AUTO_TEST_SUITE(original_context)
-
 
     BOOST_FIXTURE_TEST_CASE(construct_from_stream, original_ctx_fixture<5000>)
     {
@@ -369,7 +365,6 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data().size() == 0);
     }
 
-
     BOOST_FIXTURE_TEST_CASE(construct_from_arguments, original_ctx_fixture<3000>)
     {
       auto ec = make_error_code(sys::errc::no_stream_resources);
@@ -382,8 +377,8 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data().size() == 0);
     }
 
-
-    BOOST_FIXTURE_TEST_CASE(continuous_write, buffer_fixture<original_ctx_fixture<>>)
+    BOOST_FIXTURE_TEST_CASE(
+        continuous_write, buffer_fixture<original_ctx_fixture<>>)
     {
       auto data = original_ctx::data{};
       stream_type stream{original_ctx{&data}, io_service};
@@ -393,9 +388,10 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       }
       io_service.run();
 
-      BOOST_TEST(data.alloc_counter == 2);
-      BOOST_TEST(data.dealloc_counter == 2);
-      BOOST_TEST(data.invoke_counter == 4);
+      auto const num_send = 2; // first send 512 byte and second send the reset.
+      BOOST_TEST(data.alloc_counter == num_send);
+      BOOST_TEST(data.dealloc_counter == num_send);
+      BOOST_TEST(data.invoke_counter == num_send * 2);
       BOOST_TEST(data.continuation_counter == 0);
       BOOST_TEST(result.size() == num_buffers);
       for (auto&& e : result) {
@@ -405,6 +401,33 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data() == joined_buffers());
     }
 
+    BOOST_FIXTURE_TEST_CASE(
+        continuous_short_write, buffer_fixture<original_ctx_fixture<128>>)
+    {
+      auto data = original_ctx::data{};
+      stream_type stream{original_ctx{&data}, io_service, max_size};
+
+      for (auto&& buf : buffers) {
+        stream.async_write_some(asio::buffer(buf), callback());
+      }
+      io_service.run();
+
+      auto const writable_size
+        = stream.next_layer().max_writable_size_per_write();
+      auto const total_buffer_size = std::size_t(num_buffers) * buffer_size;
+      auto const num_send
+        = (total_buffer_size + writable_size - 1) / writable_size;
+      BOOST_TEST(data.alloc_counter == num_send);
+      BOOST_TEST(data.dealloc_counter == num_send);
+      BOOST_TEST(data.invoke_counter == num_send * 2);
+      BOOST_TEST(data.continuation_counter == 0);
+      BOOST_TEST(result.size() == num_buffers);
+      for (auto&& e : result) {
+        BOOST_TEST(std::get<0>(e) == sys::error_code{});
+        BOOST_TEST(std::get<1>(e) == buffer_size);
+      }
+      BOOST_TEST(stream.next_layer().written_data() == joined_buffers());
+    }
 
   BOOST_AUTO_TEST_SUITE_END() // original_context
 
@@ -452,7 +475,9 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       auto const& data = stream.next_layer().written_data();
       BOOST_TEST(data.size() % buffer_size == 0);
       for (auto i = std::size_t{}; i < data.size(); i += buffer_size) {
-        BOOST_TEST(std::count(&data[i], &data[i] + buffer_size, data[i]) == buffer_size);
+        BOOST_TEST(
+            std::count(&data[i], &data[i] + buffer_size, data[i])
+         == buffer_size);
       }
     }
 
@@ -474,12 +499,14 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
         func[i] = [&, i](sys::error_code const& ec, std::size_t const size) {
           result[i].emplace_back(ec, size);
           if (++counter[i] != num_buffers) {
-            stream.async_write_some(asio::buffer(buffers[counter[i]]), strand.wrap(func[i]));
+            stream.async_write_some(
+                asio::buffer(buffers[counter[i]]), strand.wrap(func[i]));
           }
         };
         futures.push_back(std::async(std::launch::async, [&, i]{
           io_service.post(strand.wrap([&, i]{
-            stream.async_write_some(asio::buffer(buffers[0]), strand.wrap(func[i]));
+            stream.async_write_some(
+                asio::buffer(buffers[0]), strand.wrap(func[i]));
           }));
           barrier.wait();
           io_service.run();
@@ -497,10 +524,11 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       auto const& data = stream.next_layer().written_data();
       BOOST_TEST(data.size() % buffer_size == 0);
       for (auto i = std::size_t{}; i < data.size(); i += buffer_size) {
-        BOOST_TEST(std::count(&data[i], &data[i] + buffer_size, data[i]) == buffer_size);
+        BOOST_TEST(
+            std::count(&data[i], &data[i] + buffer_size, data[i])
+         == buffer_size);
       }
     }
-
 
   BOOST_AUTO_TEST_SUITE_END() // multi_thread
 
