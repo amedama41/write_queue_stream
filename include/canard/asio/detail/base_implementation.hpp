@@ -1,11 +1,11 @@
 #ifndef CANARD_ASIO_DETAIL_BASE_IMPLEMENTATION_HPP
 #define CANARD_ASIO_DETAIL_BASE_IMPLEMENTATION_HPP
 
-#ifdef DEPENDS_ASIO_DETAIL_IMPL
+#ifdef CANARD_DEPENDS_ASIO_DETAIL_IMPL
 
 #include <canard/asio/detail/asio_detail_impl.hpp>
 
-#else // DEPENDS_ASIO_DETAIL_IMPL
+#else // CANARD_DEPENDS_ASIO_DETAIL_IMPL
 
 #include <cstddef>
 #include <atomic>
@@ -215,6 +215,6 @@ namespace detail {
 } // namespace detail
 } // namespace canard
 
-#endif // DEPENDS_ASIO_DETAIL_IMPL
+#endif // CANARD_DEPENDS_ASIO_DETAIL_IMPL
 
 #endif // CANARD_ASIO_DETAIL_BASE_IMPLEMENTATION_HPP
