@@ -184,6 +184,9 @@ namespace detail {
     enum half_t { half };
     enum full_t { full };
 
+    fenced_block(fenced_block const&) = delete;
+    auto operator=(fenced_block const&) -> fenced_block& = delete;
+
     explicit fenced_block(half_t) noexcept
     {
     }
