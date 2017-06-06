@@ -7,6 +7,7 @@
 
 #else // CANARD_DEPENDS_ASIO_DETAIL_IMPL
 
+#include <climits>
 #include <cstddef>
 #include <atomic>
 #include <memory>
@@ -213,7 +214,13 @@ namespace detail {
     op->post_to(io_service_impl);
   }
 
-  constexpr std::size_t max_buffers = 32;
+#if defined(IOV_MAX)
+  constexpr std::size_t max_iov_len = IOV_MAX;
+#else
+  constexpr std::size_t max_iov_len = 16;
+#endif
+
+  constexpr std::size_t max_buffers = (64 < max_iov_len) ? 64 : max_iov_len;
 
 } // namespace detail
 } // namespace canard
