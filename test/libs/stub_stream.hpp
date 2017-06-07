@@ -29,6 +29,8 @@ namespace canard_test {
             : io_service_(io_service)
             , max_writable_size_per_write_(max_writable_size_per_write)
             , ec_(ec)
+            , max_writable_size_{0}
+            , error_over_max_writable_size_{}
         {
         }
 
@@ -79,6 +81,18 @@ namespace canard_test {
                         bytes_transferred += remain_size;
                     }
                 }
+                if (max_writable_size_ != 0) {
+                    if (max_writable_size_ <= bytes_transferred) {
+                        bytes_transferred = max_writable_size_;
+                        tmp_written_data.resize(bytes_transferred);
+                        max_writable_size_ = 0;
+                        ec_ = error_over_max_writable_size_;
+                    }
+                    else {
+                        max_writable_size_ -= bytes_transferred;
+                    }
+                }
+
                 written_data_.reserve(
                         written_data_.size() + tmp_written_data.size());
                 written_data_.insert(
@@ -115,6 +129,14 @@ namespace canard_test {
             ec_ = ec;
         }
 
+        void max_writable_size(
+                  std::size_t const max_writable_size
+                , boost::system::error_code const& ec) noexcept
+        {
+            max_writable_size_ = max_writable_size;
+            error_over_max_writable_size_ = ec;
+        }
+
         auto written_data() const noexcept
             -> std::vector<CharT> const&
         {
@@ -125,6 +147,8 @@ namespace canard_test {
         boost::asio::io_service& io_service_;
         std::size_t max_writable_size_per_write_;
         boost::system::error_code ec_;
+        std::size_t max_writable_size_;
+        boost::system::error_code error_over_max_writable_size_;
         std::vector<CharT> written_data_;
     };
 

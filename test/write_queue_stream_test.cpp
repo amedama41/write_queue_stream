@@ -39,6 +39,13 @@ struct buffer_fixture : Context
         boost::algorithm::join(buffers, ""));
   }
 
+  auto joined_buffers(std::size_t const size) const -> std::vector<char>
+  {
+    auto tmp = joined_buffers();
+    tmp.resize(size);
+    return tmp;
+  }
+
   struct callback_impl
   {
     void operator()(sys::error_code const& ec, std::size_t const size) {
@@ -210,6 +217,33 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
     }
 
     BOOST_FIXTURE_TEST_CASE(
+        error_in_continuous_write, buffer_fixture<default_ctx_fixture<128>>)
+    {
+      stream_type stream{io_service, max_size};
+      auto const error = boost::asio::error::connection_refused;
+      auto const writable_size = 1028;
+      stream.next_layer().max_writable_size(writable_size, error);
+
+      for (auto&& buf : buffers) {
+        stream.async_write_some(asio::buffer(buf), callback());
+      }
+      io_service.run();
+
+      auto expected = std::vector<std::tuple<sys::error_code, std::size_t>>(
+            writable_size / buffer_size
+          , std::make_tuple(sys::error_code{}, buffer_size));
+      expected.emplace_back(error, writable_size % buffer_size);
+      expected.resize(num_buffers, std::make_tuple(error, 0));
+      BOOST_TEST_REQUIRE(result.size() == num_buffers);
+      for (auto i = std::size_t{0}; i < num_buffers; ++i) {
+        BOOST_TEST(std::get<0>(result[i]) == std::get<0>(expected[i]));
+        BOOST_TEST(std::get<1>(result[i]) == std::get<1>(expected[i]));
+      }
+      BOOST_TEST(
+          stream.next_layer().written_data() == joined_buffers(writable_size));
+    }
+
+    BOOST_FIXTURE_TEST_CASE(
         chained_write, buffer_fixture<default_ctx_fixture<128>>)
     {
       stream_type stream{io_service, max_size};
@@ -331,6 +365,33 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
     }
 
     BOOST_FIXTURE_TEST_CASE(
+        error_in_continuous_write, buffer_fixture<strand_ctx_fixture<128>>)
+    {
+      stream_type stream{strand, io_service, max_size};
+      auto const error = boost::asio::error::connection_refused;
+      auto const writable_size = 1028;
+      stream.next_layer().max_writable_size(writable_size, error);
+
+      for (auto&& buf : buffers) {
+        stream.async_write_some(asio::buffer(buf), callback());
+      }
+      io_service.run();
+
+      auto expected = std::vector<std::tuple<sys::error_code, std::size_t>>(
+            writable_size / buffer_size
+          , std::make_tuple(sys::error_code{}, buffer_size));
+      expected.emplace_back(error, writable_size % buffer_size);
+      expected.resize(num_buffers, std::make_tuple(error, 0));
+      BOOST_TEST_REQUIRE(result.size() == num_buffers);
+      for (auto i = std::size_t{0}; i < num_buffers; ++i) {
+        BOOST_TEST(std::get<0>(result[i]) == std::get<0>(expected[i]));
+        BOOST_TEST(std::get<1>(result[i]) == std::get<1>(expected[i]));
+      }
+      BOOST_TEST(
+          stream.next_layer().written_data() == joined_buffers(writable_size));
+    }
+
+    BOOST_FIXTURE_TEST_CASE(
         chained_write, buffer_fixture<strand_ctx_fixture<128>>)
     {
       stream_type stream{strand, io_service, max_size};
@@ -427,6 +488,42 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
         BOOST_TEST(std::get<1>(e) == buffer_size);
       }
       BOOST_TEST(stream.next_layer().written_data() == joined_buffers());
+    }
+
+    BOOST_FIXTURE_TEST_CASE(
+        error_in_continuous_write, buffer_fixture<original_ctx_fixture<128>>)
+    {
+      auto data = original_ctx::data{};
+      stream_type stream{original_ctx{&data}, io_service, max_size};
+      auto const error = boost::asio::error::connection_refused;
+      auto const writable_size = 1028;
+      stream.next_layer().max_writable_size(writable_size, error);
+
+      for (auto&& buf : buffers) {
+        stream.async_write_some(asio::buffer(buf), callback());
+      }
+      io_service.run();
+
+      auto expected = std::vector<std::tuple<sys::error_code, std::size_t>>(
+            writable_size / buffer_size
+          , std::make_tuple(sys::error_code{}, buffer_size));
+      expected.emplace_back(error, writable_size % buffer_size);
+      expected.resize(num_buffers, std::make_tuple(error, 0));
+      BOOST_TEST_REQUIRE(result.size() == num_buffers);
+      for (auto i = std::size_t{0}; i < num_buffers; ++i) {
+        BOOST_TEST(std::get<0>(result[i]) == std::get<0>(expected[i]));
+        BOOST_TEST(std::get<1>(result[i]) == std::get<1>(expected[i]));
+      }
+      BOOST_TEST(
+          stream.next_layer().written_data() == joined_buffers(writable_size));
+      auto const one_writable_size
+        = stream.next_layer().max_writable_size_per_write();
+      auto const num_send
+        = (writable_size + one_writable_size - 1) / one_writable_size;
+      BOOST_TEST(data.alloc_counter == num_send);
+      BOOST_TEST(data.dealloc_counter == num_send);
+      BOOST_TEST(data.invoke_counter == num_send * 2);
+      BOOST_TEST(data.continuation_counter == 0);
     }
 
   BOOST_AUTO_TEST_SUITE_END() // original_context
