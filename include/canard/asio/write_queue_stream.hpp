@@ -516,6 +516,9 @@ public:
   {
   }
 
+  write_queue_stream(write_queue_stream const&) = delete;
+  auto operator=(write_queue_stream const&) -> write_queue_stream& = delete;
+
   auto get_io_service()
     -> boost::asio::io_service&
   {
