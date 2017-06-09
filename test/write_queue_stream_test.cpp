@@ -7,6 +7,7 @@
 #include <future>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include <boost/asio/io_service.hpp>
@@ -180,6 +181,16 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data().size() == 0);
     }
 
+    BOOST_FIXTURE_TEST_CASE(non_copy_constructible, default_ctx_fixture<5000>)
+    {
+      BOOST_TEST(not std::is_copy_constructible<stream_type>::value);
+    }
+
+    BOOST_FIXTURE_TEST_CASE(non_copy_assignable, default_ctx_fixture<5000>)
+    {
+      BOOST_TEST(not std::is_copy_assignable<stream_type>::value);
+    }
+
     BOOST_FIXTURE_TEST_CASE(
         continuous_write, buffer_fixture<default_ctx_fixture<>>)
     {
@@ -328,6 +339,16 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().written_data().size() == 0);
     }
 
+    BOOST_FIXTURE_TEST_CASE(non_copy_constructible, strand_ctx_fixture<5000>)
+    {
+      BOOST_TEST(not std::is_copy_constructible<stream_type>::value);
+    }
+
+    BOOST_FIXTURE_TEST_CASE(non_copy_assignable, strand_ctx_fixture<5000>)
+    {
+      BOOST_TEST(not std::is_copy_assignable<stream_type>::value);
+    }
+
     BOOST_FIXTURE_TEST_CASE(
         continuous_write, buffer_fixture<strand_ctx_fixture<>>)
     {
@@ -436,6 +457,16 @@ BOOST_AUTO_TEST_SUITE(write_queue_stream)
       BOOST_TEST(stream.next_layer().max_writable_size_per_write() == max_size);
       BOOST_TEST(stream.next_layer().error_code() == ec);
       BOOST_TEST(stream.next_layer().written_data().size() == 0);
+    }
+
+    BOOST_FIXTURE_TEST_CASE(non_copy_constructible, original_ctx_fixture<5000>)
+    {
+      BOOST_TEST(not std::is_copy_constructible<stream_type>::value);
+    }
+
+    BOOST_FIXTURE_TEST_CASE(non_copy_assignable, original_ctx_fixture<5000>)
+    {
+      BOOST_TEST(not std::is_copy_assignable<stream_type>::value);
     }
 
     BOOST_FIXTURE_TEST_CASE(
