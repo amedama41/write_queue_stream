@@ -14,143 +14,140 @@
 
 namespace canard_test {
 
-    template <class CharT>
-    class stub_stream
+  template <class CharT>
+  class stub_stream
+  {
+  public:
+    using lowest_layer_type = stub_stream;
+
+    explicit stub_stream(
+          boost::asio::io_service& io_service
+        , std::size_t const max_writable_size_per_write
+            = std::numeric_limits<std::size_t>::max()
+        , boost::system::error_code const& ec
+            = boost::system::error_code{})
+      : io_service_(io_service)
+      , max_writable_size_per_write_(max_writable_size_per_write)
+      , ec_(ec)
+      , max_writable_size_{0}
+      , error_over_max_writable_size_{}
     {
-    public:
-        using lowest_layer_type = stub_stream;
+    }
 
-        explicit stub_stream(
-                  boost::asio::io_service& io_service
-                , std::size_t const max_writable_size_per_write
-                        = std::numeric_limits<std::size_t>::max()
-                , boost::system::error_code const& ec
-                        = boost::system::error_code{})
-            : io_service_(io_service)
-            , max_writable_size_per_write_(max_writable_size_per_write)
-            , ec_(ec)
-            , max_writable_size_{0}
-            , error_over_max_writable_size_{}
-        {
+    auto get_io_service() noexcept
+      -> boost::asio::io_service&
+    {
+      return io_service_;
+    }
+
+    auto lowest_layer() noexcept
+      -> lowest_layer_type&
+    {
+      return *this;
+    }
+
+    template <
+        class ConstBufferSequence, class CompletionToken
+      , class WriteHandler = typename boost::asio::handler_type<
+            typename std::decay<CompletionToken>::type
+          , void(boost::system::error_code, std::size_t)
+        >::type
+    >
+    auto async_write_some(
+        ConstBufferSequence const& buffers, CompletionToken&& token)
+      -> typename boost::asio::async_result<WriteHandler>::type
+    {
+
+      auto handler = WriteHandler(std::forward<CompletionToken>(token));
+      boost::asio::async_result<WriteHandler> result{handler};
+
+      auto bytes_transferred = std::size_t{0};
+      if (!ec_) {
+        auto tmp_written_data = std::vector<CharT>{};
+        for (auto&& buffer : buffers) {
+          auto const size = boost::asio::buffer_size(buffer);
+          auto const data = boost::asio::buffer_cast<CharT const*>(buffer);
+          if (size + bytes_transferred < max_writable_size_per_write_) {
+            tmp_written_data.insert(tmp_written_data.end(), data, data + size);
+            bytes_transferred += size;
+          }
+          else {
+            auto const remain_size
+              = max_writable_size_per_write_ - bytes_transferred;
+            tmp_written_data.insert(
+                tmp_written_data.end(), data, data + remain_size);
+            bytes_transferred += remain_size;
+          }
+        }
+        if (max_writable_size_ != 0) {
+          if (max_writable_size_ <= bytes_transferred) {
+            bytes_transferred = max_writable_size_;
+            tmp_written_data.resize(bytes_transferred);
+            max_writable_size_ = 0;
+            ec_ = error_over_max_writable_size_;
+          }
+          else {
+            max_writable_size_ -= bytes_transferred;
+          }
         }
 
-        auto get_io_service() noexcept
-            -> boost::asio::io_service&
-        {
-            return io_service_;
-        }
+        written_data_.reserve(written_data_.size() + tmp_written_data.size());
+        written_data_.insert(
+              written_data_.end()
+            , tmp_written_data.begin(), tmp_written_data.end());
+      }
 
-        auto lowest_layer() noexcept
-            -> lowest_layer_type&
-        {
-            return *this;
-        }
+      io_service_.post(
+          canard::detail::bind(std::move(handler), ec_, bytes_transferred));
 
-        template <
-              class ConstBufferSequence, class CompletionToken
-            , class WriteHandler = typename boost::asio::handler_type<
-                  typename std::decay<CompletionToken>::type
-                , void(boost::system::error_code, std::size_t)
-              >::type
-        >
-        auto async_write_some(
-                ConstBufferSequence const& buffers, CompletionToken&& token)
-            -> typename boost::asio::async_result<WriteHandler>::type
-        {
+      return result.get();
+    }
 
-            auto handler = WriteHandler(std::forward<CompletionToken>(token));
-            boost::asio::async_result<WriteHandler> result{handler};
+    auto max_writable_size_per_write() const noexcept
+      -> std::size_t
+    {
+      return max_writable_size_per_write_;
+    }
 
-            auto bytes_transferred = std::size_t{0};
-            if (!ec_) {
-                auto tmp_written_data = std::vector<CharT>{};
-                for (auto&& buffer : buffers) {
-                    auto const size = boost::asio::buffer_size(buffer);
-                    auto const data
-                        = boost::asio::buffer_cast<CharT const*>(buffer);
-                    if (size + bytes_transferred < max_writable_size_per_write_) {
-                        tmp_written_data.insert(
-                                tmp_written_data.end(), data, data + size);
-                        bytes_transferred += size;
-                    }
-                    else {
-                        auto const remain_size
-                            = max_writable_size_per_write_ - bytes_transferred;
-                        tmp_written_data.insert(
-                                tmp_written_data.end(), data, data + remain_size);
-                        bytes_transferred += remain_size;
-                    }
-                }
-                if (max_writable_size_ != 0) {
-                    if (max_writable_size_ <= bytes_transferred) {
-                        bytes_transferred = max_writable_size_;
-                        tmp_written_data.resize(bytes_transferred);
-                        max_writable_size_ = 0;
-                        ec_ = error_over_max_writable_size_;
-                    }
-                    else {
-                        max_writable_size_ -= bytes_transferred;
-                    }
-                }
+    void max_writable_size_per_write(
+        std::size_t const max_writable_size_per_write) noexcept
+    {
+      max_writable_size_per_write_ = max_writable_size_per_write;
+    }
 
-                written_data_.reserve(
-                        written_data_.size() + tmp_written_data.size());
-                written_data_.insert(
-                          written_data_.end()
-                        , tmp_written_data.begin(), tmp_written_data.end());
-            }
+    auto error_code() const noexcept
+      -> boost::system::error_code const&
+    {
+      return ec_;
+    }
 
-            io_service_.post(canard::detail::bind(
-                        std::move(handler), ec_, bytes_transferred));
+    void error_code(boost::system::error_code const& ec)
+    {
+      ec_ = ec;
+    }
 
-            return result.get();
-        }
+    void max_writable_size(
+          std::size_t const max_writable_size
+        , boost::system::error_code const& ec) noexcept
+    {
+      max_writable_size_ = max_writable_size;
+      error_over_max_writable_size_ = ec;
+    }
 
-        auto max_writable_size_per_write() const noexcept
-            -> std::size_t
-        {
-            return max_writable_size_per_write_;
-        }
+    auto written_data() const noexcept
+      -> std::vector<CharT> const&
+    {
+      return written_data_;
+    }
 
-        void max_writable_size_per_write(
-                std::size_t const max_writable_size_per_write) noexcept
-        {
-            max_writable_size_per_write_ = max_writable_size_per_write;
-        }
-
-        auto error_code() const noexcept
-            -> boost::system::error_code const&
-        {
-            return ec_;
-        }
-
-        void error_code(boost::system::error_code const& ec)
-        {
-            ec_ = ec;
-        }
-
-        void max_writable_size(
-                  std::size_t const max_writable_size
-                , boost::system::error_code const& ec) noexcept
-        {
-            max_writable_size_ = max_writable_size;
-            error_over_max_writable_size_ = ec;
-        }
-
-        auto written_data() const noexcept
-            -> std::vector<CharT> const&
-        {
-            return written_data_;
-        }
-
-    private:
-        boost::asio::io_service& io_service_;
-        std::size_t max_writable_size_per_write_;
-        boost::system::error_code ec_;
-        std::size_t max_writable_size_;
-        boost::system::error_code error_over_max_writable_size_;
-        std::vector<CharT> written_data_;
-    };
+  private:
+    boost::asio::io_service& io_service_;
+    std::size_t max_writable_size_per_write_;
+    boost::system::error_code ec_;
+    std::size_t max_writable_size_;
+    boost::system::error_code error_over_max_writable_size_;
+    std::vector<CharT> written_data_;
+  };
 
 } // namespace canard_test
 
