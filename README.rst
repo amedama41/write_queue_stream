@@ -9,7 +9,7 @@ This library provide a Boost.Asio's AsyncWriteStream ``write_queue_stream`` for 
 
 Users of the write_queue_stream can start multiple writing asynchronous operations
 before other asynchronous writes are not completed yet.
-All of writting data is queued in a write_queue_stream object, and written in order.
+All of writing data is queued in a write_queue_stream object, and written in order.
 
 The write_queue_stream's ``async_write_some`` is a composed operation such as ``asio::async_write``.
 So this function use inner handler. This handler will be called in the context which is passed 
@@ -18,7 +18,7 @@ The context type is specified write_queue_stream class's template parameter.
 
 .. note:: Other composed operations use the context same as handler passed to the operations.
 
-Other semantics, such as thread safty, object lifetime, or etc. are same as other Boost.Asio's IOObjects.
+Other semantics, such as thread safety, object lifetime, or etc. are same as other Boost.Asio's IOObjects.
 
 Install
 =======
